@@ -18,10 +18,15 @@ SONG_REGEX=r'\"(.*?)\"'
 def extract_playlist_from_image(image_filename):
     text = pytesseract.image_to_string(Image.open(image_filename))
     artists = re.findall(ARTIST_REGEX, text)
+    for artist in artists:
+      text = re.sub(ARTIST_REGEX, '', text)
     songs = [re.sub(r'\s+', ' ', song) for song in
             re.findall(SONG_REGEX, text, flags=re.DOTALL)]
-    assert(len(artists) == len(songs))
-    return zip(artists, songs)
+    min_pairs_found = min(len(artists), len(songs))
+    max_pairs_found = max(len(artists), len(songs))
+    if min_pairs_found != max_pairs_found:
+      print 'Warning: only %d out of %d correctly parsed' % (min_pairs_found, max_pairs_found)
+    return zip(artists[0:min_pairs_found], songs[0:min_pairs_found])
 
 def get_or_create_DLS_playlist(spotify_api):
     offset = 0
@@ -44,9 +49,13 @@ def get_recent_tweets():
       timestamp = int(f.read()) + 24*60*60 # advance the time by one day
       most_recent_datetime = str(datetime.fromtimestamp(timestamp))
       most_recent_date = most_recent_datetime.split(' ')[0]
-      return twitter_api.GetSearch(raw_query='q=from%3AMichaelRyanRuiz%20%23DLSplaylist%20since%3A' + most_recent_date)
+      tweets = twitter_api.GetSearch(raw_query='q=from%3AMichaelRyanRuiz%20%23DLSplaylist%20since%3A' + most_recent_date)
+      tweets.reverse()
+      return tweets
   except IOError:
-    return twitter_api.GetSearch(raw_query='q=from%3AMichaelRyanRuiz%20%23DLSplaylist')
+    tweets = twitter_api.GetSearch(raw_query='q=from%3AMichaelRyanRuiz%20%23DLSplaylist')
+    tweets.reverse()
+    return tweets
 
 # Twitter API credentials
 TWITTER_CONSUMER_KEY='126lnc7qVG5Nl3mS8pSYDcKUJ'
